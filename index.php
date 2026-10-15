@@ -181,6 +181,75 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
   <form method="post" action="?a=logout"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><button class="ghost" type="submit">Вийти</button></form>
 </header>
 <main class="wrap">
+  <?php
+    $dayNames = [1 => 'Понеділок', 2 => 'Вівторок', 3 => 'Середа', 4 => 'Четвер', 5 => 'Пʼятниця', 6 => 'Субота', 7 => 'Неділя'];
+    $today = (int)date('N');
+    $curWeek = $w['den'] ? 'den' : 'num';
+    $page = ($_GET['p'] ?? '') === 'schedule' ? 'schedule' : 'home';
+
+    // Розклад: автоматично з Google-таблиці (за обʼєднаними комірками), інакше — ручний із content.php.
+    // Будь-яка помилка тут не повинна валити всю сторінку.
+    $norm = []; $schedNote = '';
+    try {
+        require_once __DIR__ . '/lib/schedule.php';
+        if (!empty($content['schedule_source'])) {
+            $res = schedule_load($content['schedule_source'], __DIR__ . '/storage/cache');
+            if ($res['ok']) $norm = schedule_normalize($res['items'], $content['subjects']);
+            else $schedNote = 'Розклад із таблиці тимчасово недоступний.';
+        }
+        if (!$norm && $content['schedule']) {
+            $items = [];
+            foreach ($content['schedule'] as $d => $pp) foreach ($pp as [$n, $k, $room]) $items[] = [$d, $n, 'both', ($content['subjects'][$k]['name'] ?? $k) . ' ' . $room];
+            $norm = schedule_normalize($items, $content['subjects']);
+        }
+        // посилання на підключення з таблиці; явне 'join' у предметі має пріоритет
+        if ($norm && !empty($content['joins_source'])) $norm = joins_apply($norm, joins_load($content['joins_source'], __DIR__ . '/storage/cache'));
+    } catch (Throwable $e) {
+        error_log('schedule: ' . $e->getMessage());
+        if (!$norm) $schedNote = 'Розклад тимчасово недоступний.';
+    }
+
+    // Тиждень, який дивимось: 0 — поточний, -1 — минулий, +1 — наступний…
+    $off = max(-20, min(20, (int)($_GET['w'] ?? 0)));
+    $weekType = (($off % 2 === 0) === (bool)!$w['den']) ? 'num' : 'den'; // парні зсуви — як поточний
+    $monday = (new DateTimeImmutable('monday this week'))->modify(($off * 7) . ' days');
+    $pairsToday = schedule_for_safe($norm, $today, $curWeek);
+
+    // Один компактний рядок пари: час · назва · аудиторія · підключення (посилання, ID, код)
+    $renderPairs = function (array $pairs) use ($content) {
+        foreach ($pairs as $p) {
+            echo '<div class="pair"><div class="pt"><b>', (int)$p['pair'], '</b><span>', h($content['times'][$p['pair']] ?? ''), '</span></div><div class="pn">', h($p['name']);
+            if ($p['room'] !== '') echo ' <small>', h($p['room']), '</small>';
+            if (!empty($p['join'])) {
+                $j = join_info($p['join'], (string)($p['pass'] ?? ''));
+                echo '<div class="jn"><a class="pl join" href="', h($p['join']), '" target="_blank" rel="noopener noreferrer">🎥 Приєднатися</a>';
+                if ($j['id'] !== '') echo ' <span class="cr">ID <b>', h($j['id']), '</b></span>';
+                if ($j['pass'] !== '') echo ' <span class="cr">код <b>', h($j['pass']), '</b></span>';
+                echo ' <span class="url">', h($j['short']), '</span></div>';
+            }
+            echo '</div></div>';
+        }
+    };
+  ?>
+
+<?php if ($page === 'schedule'): ?>
+  <p><a class="back" href="./">← На головну</a></p>
+  <section>
+    <h2>Розклад</h2>
+    <div class="wknav">
+      <a href="?p=schedule&amp;w=<?= $off - 1 ?>">← Минулий</a>
+      <span><b><?= $weekType === 'num' ? 'Чисельник' : 'Знаменник' ?></b> · <?= h($monday->format('d.m')) ?> – <?= h($monday->modify('+6 days')->format('d.m')) ?><?= $off === 0 ? ' · цей тиждень' : '' ?></span>
+      <a href="?p=schedule&amp;w=<?= $off + 1 ?>">Наступний →</a>
+    </div>
+    <?php if ($off !== 0): ?><p><a href="?p=schedule">До поточного тижня</a></p><?php endif; ?>
+    <?php if ($schedNote): ?><p class="muted"><?= h($schedNote) ?></p><?php endif; ?>
+    <?php for ($d = 1; $d <= 6; $d++): $dp = schedule_for_safe($norm, $d, $weekType); $date = $monday->modify('+' . ($d - 1) . ' days'); ?>
+      <h3<?= ($off === 0 && $d === $today) ? ' class="now"' : '' ?>><?= h($dayNames[$d]) ?> · <?= h($date->format('d.m')) ?></h3>
+      <?php if ($dp) $renderPairs($dp); else echo '<p class="muted">Пар немає</p>'; ?>
+    <?php endfor; ?>
+  </section>
+
+<?php else: ?>
   <section class="week <?= $w['den'] ? 'den' : 'num' ?>">
     <?php if ($w['before_start']): ?>
       <div class="big">Семестр ще не розпочався</div>
@@ -192,83 +261,42 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <?php endif; ?>
   </section>
 
-  <?php
-    $dayNames = [1 => 'Понеділок', 2 => 'Вівторок', 3 => 'Середа', 4 => 'Четвер', 5 => 'Пʼятниця', 6 => 'Субота', 7 => 'Неділя'];
-    $today = (int)date('N');
-    $curWeek = $w['den'] ? 'den' : 'num';
+  <section>
+    <h2>Посилання</h2>
+    <div class="links">
+      <?php foreach ($content['links'] as [$t, $u, $d]): ?>
+        <a class="lk" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><span class="url"><?= h(short_url($u)) ?></span></a>
+      <?php endforeach; ?>
+      <?php foreach ($content['chats'] as [$t, $u, $d]): ?>
+        <a class="lk" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><span class="url"><?= h(short_url($u)) ?></span></a>
+      <?php endforeach; ?>
+    </div>
+  </section>
 
-    // Розклад: автоматично з Google-таблиці (за обʼєднаними комірками), інакше — ручний із content.php.
-    // Будь-яка помилка тут не повинна валити всю сторінку.
-    $norm = []; $schedNote = '';
-    try {
-        if (!empty($content['schedule_source'])) {
-            require_once __DIR__ . '/lib/schedule.php';
-            $res = schedule_load($content['schedule_source'], __DIR__ . '/storage/cache');
-            if ($res['ok']) $norm = schedule_normalize($res['items'], $content['subjects']);
-            else $schedNote = 'Розклад із таблиці тимчасово недоступний.';
-        }
-        if (!$norm && $content['schedule']) {
-            require_once __DIR__ . '/lib/schedule.php';
-            $items = [];
-            foreach ($content['schedule'] as $d => $pp) foreach ($pp as [$n, $k, $room]) $items[] = [$d, $n, 'both', ($content['subjects'][$k]['name'] ?? $k) . ' ' . $room];
-            $norm = schedule_normalize($items, $content['subjects']);
-        }
-    } catch (Throwable $e) {
-        error_log('schedule: ' . $e->getMessage());
-        $norm = []; $schedNote = 'Розклад тимчасово недоступний.';
-    }
-
-    try { // посилання на підключення з таблиці; явне 'join' у предметі має пріоритет
-        if ($norm && !empty($content['joins_source'])) $norm = joins_apply($norm, joins_load($content['joins_source'], __DIR__ . '/storage/cache'));
-    } catch (Throwable $e) { error_log('joins: ' . $e->getMessage()); }
-
-    // Тиждень, який дивимось: 0 — поточний, -1 — минулий, +1 — наступний…
-    $off = max(-20, min(20, (int)($_GET['w'] ?? 0)));
-    $weekType = (($off % 2 === 0) === (bool)!$w['den']) ? 'num' : 'den'; // парні зсуви — як поточний
-    $monday = (new DateTimeImmutable('monday this week'))->modify(($off * 7) . ' days');
-    $pairsToday = schedule_for_safe($norm, $today, $curWeek);
-    $renderPairs = function (array $pairs) use ($content) {
-        foreach ($pairs as $p) {
-            echo '<div class="card"><b>', (int)$p['pair'], ' пара · ', h($content['times'][$p['pair']] ?? ''), '</b>', h($p['name']);
-            if ($p['room'] !== '') echo '<small>', h($p['room']), '</small>';
-            if (!empty($p['join'])) echo '<a class="pl join" href="', h($p['join']), '" target="_blank" rel="noopener noreferrer">🎥 Приєднатися на пару</a>';
-            echo '</div>';
-        }
-    };
-  ?>
   <?php if ($norm || $schedNote): ?>
   <section>
-    <h2>Пари сьогодні · <?= h($dayNames[$today]) ?> · <?= $w['den'] ? 'знаменник' : 'чисельник' ?></h2>
+    <h2>Пари сьогодні · <?= h($dayNames[$today]) ?> · <?= $w['den'] ? 'знаменник' : 'чисельник' ?>
+      <a class="more" href="?p=schedule">Весь розклад →</a></h2>
     <?php if ($schedNote): ?><p class="muted"><?= h($schedNote) ?></p><?php endif; ?>
     <?php if ($norm && !$pairsToday): ?><p class="muted">Сьогодні пар немає.</p><?php endif; ?>
     <?php $renderPairs($pairsToday); ?>
-  </section>
-  <section>
-    <h2>Розклад тижня</h2>
-    <div class="wknav">
-      <a href="?w=<?= $off - 1 ?>">← Минулий</a>
-      <span><b><?= $weekType === 'num' ? 'Чисельник' : 'Знаменник' ?></b> · <?= h($monday->format('d.m')) ?> – <?= h($monday->modify('+6 days')->format('d.m')) ?><?= $off === 0 ? ' · цей тиждень' : '' ?></span>
-      <a href="?w=<?= $off + 1 ?>">Наступний →</a>
-    </div>
-    <?php if ($off !== 0): ?><p><a href="./">До поточного тижня</a></p><?php endif; ?>
-    <?php for ($d = 1; $d <= 6; $d++): $dp = schedule_for_safe($norm, $d, $weekType); $date = $monday->modify('+' . ($d - 1) . ' days'); ?>
-      <h3<?= ($off === 0 && $d === $today) ? ' class="now"' : '' ?>><?= h($dayNames[$d]) ?> · <?= h($date->format('d.m')) ?></h3>
-      <?php if ($dp) $renderPairs($dp); else echo '<p class="muted">Пар немає</p>'; ?>
-    <?php endfor; ?>
   </section>
   <?php endif; ?>
 
   <div class="cols">
     <section>
-      <h2>Посилання</h2>
-      <?php foreach ($content['links'] as [$t, $u, $d, $showUrl]): ?>
-        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small><small class="url"><?= h(short_url($u)) ?></small></a>
+      <h2>Предмети</h2>
+      <?php foreach ($content['subjects'] as $key => $s): ?>
+        <div class="card">
+          <b><?= h($s['name']) ?></b>
+          <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
+          <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
+            <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>
+          <?php endforeach; ?>
+        </div>
       <?php endforeach; ?>
-      <?php if ($content['chats']): ?><h2>Чати групи</h2>
-        <?php foreach ($content['chats'] as [$t, $u, $d]): ?>
-          <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small></a>
-        <?php endforeach; ?>
-      <?php endif; ?>
+    </section>
+    <section>
       <h2>Група · <?= count($members) ?> студентів</h2>
       <ol class="list">
         <?php foreach ($members as $i => [$name]): ?>
@@ -276,21 +304,8 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
         <?php endforeach; ?>
       </ol>
     </section>
-    <section>
-      <h2>Предмети</h2>
-      <?php foreach ($content['subjects'] as $key => $s):
-        ?>
-        <div class="card">
-          <b><?= h($s['name']) ?></b>
-          <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
-          <?php if (!empty($s['join'])): ?><a class="pl join" href="<?= h($s['join']) ?>" target="_blank" rel="noopener noreferrer">🎥 Приєднатися на пару</a><?php endif; ?>
-          <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
-            <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>
-          <?php endforeach; ?>
-        </div>
-      <?php endforeach; ?>
-    </section>
   </div>
+<?php endif; ?>
 </main>
 <?php endif; ?>
 </body>

@@ -186,6 +186,7 @@ function schedule_normalize(array $items, array $subjects): array
         $rest = trim(preg_replace('/\(\s*по\s+(чисельнику|знаменнику)\s*\)/ui', '', $rest));
         $out[] = ['text' => $text, 'day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
                   'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
+                  'pass' => $key !== null ? ($subjects[$key]['join_pass'] ?? '') : '',
                   'name' => $key !== null ? $subjects[$key]['name'] : $text, 'room' => $key !== null ? $rest : ''];
     }
     usort($out, fn($a, $b) => [$a['day'], $a['pair']] <=> [$b['day'], $b['pair']]);
@@ -226,11 +227,13 @@ function joins_load(array $src, string $cacheDir): array
         if ($section === null) continue;
         $a = trim(preg_replace('/\s+/u', ' ', (string)($row[0] ?? '')));
         if ($a === '') continue;
-        if (!preg_match('~https?://[^\s,;]+~u', implode(' ', array_slice($row, 1)), $m)) continue;
+        $rest = implode(' ', array_slice($row, 1));
+        if (!preg_match('~https?://[^\s,;]+~u', $rest, $m)) continue;
+        $pass = preg_match('/(?:код\s*доступ[ау]?|passcode|пароль)\s*:?\s*([A-Za-z0-9]+)/ui', $rest, $pm) ? $pm[1] : '';
         $code = preg_match('/\((\d\d\.\d\d)\)/', $a, $c) ? $c[1] : '';
         $name = trim(preg_replace('/\(\d\d\.\d\d\)|\//u', '', $a));
         $name = trim(preg_replace('/\s+/u', ' ', $name));
-        $out[$section][] = [$name, $code, $m[0]];
+        $out[$section][] = [$name, $code, $m[0], $pass];
     }
     fclose($h);
     return $out;
@@ -243,13 +246,32 @@ function joins_apply(array $norm, array $joins): array
         if (!empty($p['join'])) continue;
         $order = $p['day'] === 2 ? ['lecture', 'practice'] : ['practice', 'lecture'];
         foreach ($order as $sec) {
-            foreach ($joins[$sec] as [$name, $code, $url]) {
+            foreach ($joins[$sec] as [$name, $code, $url, $pass]) {
                 if ($name === '' || strncmp(ulower($p['name']), ulower($name), strlen($name)) !== 0) continue;
                 if ($code !== '' && strpos($p['text'], '(' . $code . ')') === false) continue;
                 $p['join'] = $url;
+                $p['pass'] = $pass;
                 break 2;
             }
         }
     }
     return $norm;
+}
+
+/** Дані для відображення підключення: що показати поруч із кнопкою. */
+function join_info(string $url, string $pass): array
+{
+    $id = preg_match('~/j/(\d{9,11})~', $url, $m) ? join_fmt_id($m[1]) : '';
+    $host = (string)parse_url($url, PHP_URL_HOST);
+    $short = $host . (string)parse_url($url, PHP_URL_PATH);
+    return ['id' => $id, 'pass' => $pass, 'short' => $short];
+}
+
+/** 296 408 4466 (10 цифр: 3-3-4), 9 цифр: 3-3-3, 11 цифр: 3-4-4. */
+function join_fmt_id(string $d): string
+{
+    $n = strlen($d);
+    if ($n === 10) return substr($d, 0, 3) . ' ' . substr($d, 3, 3) . ' ' . substr($d, 6);
+    if ($n === 11) return substr($d, 0, 3) . ' ' . substr($d, 3, 4) . ' ' . substr($d, 7);
+    return trim(chunk_split($d, 3, ' '));
 }
