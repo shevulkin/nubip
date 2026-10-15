@@ -59,3 +59,6 @@ h2{font-size:1.05rem;margin:22px 0 10px}
 .jn .pl{margin:0;padding:2px 10px;font-size:.85rem}
 .cr{font-size:.8rem;color:var(--muted)}.cr b{color:var(--fg);font-family:ui-monospace,Consolas,monospace}
 .jn .url{display:inline;font-size:.75rem}
+.cp{width:auto;margin-left:8px;padding:3px 10px;font-size:.8rem;font-weight:500;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:999px;vertical-align:middle}
+.cp:hover{border-color:var(--gold)}
+.tc{font-size:.8rem;color:var(--muted);margin-top:2px}

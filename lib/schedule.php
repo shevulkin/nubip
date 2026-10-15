@@ -187,6 +187,7 @@ function schedule_normalize(array $items, array $subjects): array
         $out[] = ['text' => $text, 'day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
                   'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
                   'pass' => $key !== null ? ($subjects[$key]['join_pass'] ?? '') : '',
+                  'teacher' => $key !== null ? ($subjects[$key]['teacher'] ?? '') : '',
                   'name' => $key !== null ? $subjects[$key]['name'] : $text, 'room' => $key !== null ? $rest : ''];
     }
     usort($out, fn($a, $b) => [$a['day'], $a['pair']] <=> [$b['day'], $b['pair']]);
@@ -233,7 +234,7 @@ function joins_load(array $src, string $cacheDir): array
         $code = preg_match('/\((\d\d\.\d\d)\)/', $a, $c) ? $c[1] : '';
         $name = trim(preg_replace('/\(\d\d\.\d\d\)|\//u', '', $a));
         $name = trim(preg_replace('/\s+/u', ' ', $name));
-        $out[$section][] = [$name, $code, $m[0], $pass];
+        $out[$section][] = [$name, $code, $m[0], $pass, teacher_short((string)($row[1] ?? ''))];
     }
     fclose($h);
     return $out;
@@ -246,11 +247,12 @@ function joins_apply(array $norm, array $joins): array
         if (!empty($p['join'])) continue;
         $order = $p['day'] === 2 ? ['lecture', 'practice'] : ['practice', 'lecture'];
         foreach ($order as $sec) {
-            foreach ($joins[$sec] as [$name, $code, $url, $pass]) {
+            foreach ($joins[$sec] as [$name, $code, $url, $pass, $teacher]) {
                 if ($name === '' || strncmp(ulower($p['name']), ulower($name), strlen($name)) !== 0) continue;
                 if ($code !== '' && strpos($p['text'], '(' . $code . ')') === false) continue;
                 $p['join'] = $url;
                 $p['pass'] = $pass;
+                if (empty($p['teacher'])) $p['teacher'] = $teacher;
                 break 2;
             }
         }
@@ -274,4 +276,56 @@ function join_fmt_id(string $d): string
     if ($n === 10) return substr($d, 0, 3) . ' ' . substr($d, 3, 3) . ' ' . substr($d, 6);
     if ($n === 11) return substr($d, 0, 3) . ' ' . substr($d, 3, 4) . ' ' . substr($d, 7);
     return trim(chunk_split($d, 3, ' '));
+}
+
+/** «Чекаль Людмила Анатоліївна» → «Чекаль Л.А.»; вже скорочене лишається як є. */
+function teacher_short(string $s): string
+{
+    $s = trim(preg_replace('/\s+/u', ' ', $s));
+    if ($s === '' || strpos($s, '.') !== false) return $s;
+    $w = explode(' ', $s);
+    $out = array_shift($w);
+    $ini = '';
+    foreach ($w as $x) if (preg_match('/^./u', $x, $m)) $ini .= $m[0] . '.';
+    return $ini === '' ? $out : $out . ' ' . $ini;
+}
+
+/**
+ * Текст дня для пересилання в чат групи:
+ * розклад на середу (за ЧИСЕЛЬНИКОМ): … пари, викладач, Zoom, (ID, Код).
+ */
+function schedule_day_text(int $day, string $weekType, array $pairs, array $times, int $total = 7): string
+{
+    $acc = [1 => 'понеділок', 2 => 'вівторок', 3 => 'середу', 4 => 'четвер', 5 => 'пʼятницю', 6 => 'суботу', 7 => 'неділю'];
+    $by = [];
+    foreach ($pairs as $p) $by[$p['pair']][] = $p;
+    $out = ['розклад на ' . ($acc[$day] ?? '') . ' (за ' . ($weekType === 'num' ? 'ЧИСЕЛЬНИКОМ' : 'ЗНАМЕННИКОМ') . '):'];
+    $gap = [];
+    $flush = function () use (&$gap, &$out) {
+        if (!$gap) return;
+        $out[] = '';
+        $out[] = implode(', ', $gap) . (count($gap) > 1 ? ' пари' : ' пара') . ': ➖ Нема';
+        $gap = [];
+    };
+    for ($n = 1; $n <= $total; $n++) {
+        if (empty($by[$n])) { $gap[] = $n; continue; }
+        $flush();
+        foreach ($by[$n] as $p) {
+            $out[] = '';
+            $t = str_replace('–', ' – ', $times[$n] ?? '');
+            $out[] = $n . ' пара' . ($t !== '' ? ' (' . $t . ')' : '') . ': ' . trim($p['name'] . ' ' . $p['room']);
+            if (!empty($p['teacher'])) $out[] = '👨‍🏫 Викладач: ' . $p['teacher'];
+            if (!empty($p['join'])) {
+                $kind = strpos($p['join'], 'meet.google') !== false ? 'Meet' : 'Zoom';
+                $out[] = '🌐 ' . $kind . ': ' . $p['join'];
+                $j = join_info($p['join'], (string)($p['pass'] ?? ''));
+                $cr = [];
+                if ($j['id'] !== '' && $kind === 'Zoom') $cr[] = 'ID: ' . $j['id'];
+                if ($j['pass'] !== '') $cr[] = 'Код: ' . $j['pass'];
+                if ($cr) $out[] = '(' . implode(', ', $cr) . ')';
+            }
+        }
+    }
+    $flush();
+    return implode("\n", $out);
 }
