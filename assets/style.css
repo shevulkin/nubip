@@ -87,3 +87,13 @@ section h3 .cp{background:rgba(255,255,255,.65);border:1px solid #e3cf93}
 section h3.now{background:var(--gold);border-color:var(--gold)}
 section h3.now .cp{background:rgba(255,255,255,.55)}
 @media (prefers-color-scheme:dark){section h3{border-color:#6a5a2c}section h3 .cp{background:rgba(0,0,0,.25);border-color:#6a5a2c}}
+
+/* Плашка тижня: спокійні світлі кольори замість насиченого червоного */
+.week{--wk-bg:#e8f1df;--wk-bd:#b5d3a0;--wk-ac:#3d6b2a;background:var(--wk-bg);color:#24331c;border:1px solid var(--wk-bd);border-left:5px solid var(--wk-ac)}
+.week.den{--wk-bg:#e4edf7;--wk-bd:#b3c9e3;--wk-ac:#2f5f95;color:#1d2c3d}
+.week .big{color:var(--wk-ac)}
+.week .lbl,.week .sub{opacity:.85}
+@media (prefers-color-scheme:dark){
+  .week{--wk-bg:#222d1c;--wk-bd:#3c5230;--wk-ac:#a5d18c;color:#e3efd9}
+  .week.den{--wk-bg:#1d2733;--wk-bd:#36506b;--wk-ac:#8ab4e8;color:#dde8f5}
+}
