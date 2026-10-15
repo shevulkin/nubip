@@ -192,14 +192,45 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
   <?php
     $dayNames = [1 => 'Понеділок', 2 => 'Вівторок', 3 => 'Середа', 4 => 'Четвер', 5 => 'Пʼятниця', 6 => 'Субота', 7 => 'Неділя'];
     $today = (int)date('N');
-    $pairsToday = $content['schedule'][$today] ?? [];
+    $curWeek = $w['den'] ? 'den' : 'num';
+    $nextWeek = $w['den'] ? 'num' : 'den';
+
+    // Розклад: автоматично з Google-таблиці (за обʼєднаними комірками), інакше — ручний із content.php
+    $norm = []; $schedNote = '';
+    if (!empty($content['schedule_source'])) {
+        require_once __DIR__ . '/lib/schedule.php';
+        $res = schedule_load($content['schedule_source'], __DIR__ . '/storage/cache');
+        if ($res['ok']) $norm = schedule_normalize($res['items'], $content['subjects']);
+        else $schedNote = 'Розклад із таблиці тимчасово недоступний.';
+    }
+    if (!$norm && $content['schedule']) {
+        $items = [];
+        foreach ($content['schedule'] as $d => $pp) foreach ($pp as [$n, $k, $room]) $items[] = [$d, $n, 'both', ($content['subjects'][$k]['name'] ?? $k) . ' ' . $room];
+        $norm = schedule_normalize($items, $content['subjects']);
+    }
+    $pairsToday = schedule_for($norm, $today, $curWeek);
+    $weekTag = ['both' => '', 'num' => 'чисельник', 'den' => 'знаменник'];
+    $renderPairs = function (array $pairs) use ($content, $weekTag) {
+        foreach ($pairs as $p) {
+            echo '<div class="card"><b>', (int)$p['pair'], ' пара · ', h($content['times'][$p['pair']] ?? ''), '</b>', h($p['name']);
+            if ($p['room'] !== '') echo '<small>', h($p['room']), '</small>';
+            echo '</div>';
+        }
+    };
   ?>
-  <?php if ($content['schedule']): ?>
+  <?php if ($norm || $schedNote): ?>
   <section>
-    <h2>Пари сьогодні · <?= h($dayNames[$today]) ?></h2>
-    <?php if (!$pairsToday): ?><p class="muted">Сьогодні пар немає.</p><?php endif; ?>
-    <?php foreach ($pairsToday as [$n, $key, $room]): $s = $content['subjects'][$key] ?? ['name' => $key]; ?>
-      <div class="card"><b><?= (int)$n ?> пара · <?= h($content['times'][$n] ?? '') ?></b><?= h($s['name']) ?><small><?= h($room) ?></small></div>
+    <h2>Пари сьогодні · <?= h($dayNames[$today]) ?> · <?= h($w['den'] ? 'знаменник' : 'чисельник') ?></h2>
+    <?php if ($schedNote): ?><p class="muted"><?= h($schedNote) ?></p><?php endif; ?>
+    <?php if ($norm && !$pairsToday): ?><p class="muted">Сьогодні пар немає.</p><?php endif; ?>
+    <?php $renderPairs($pairsToday); ?>
+    <?php foreach ([[$curWeek, 'Поточний тиждень · ' . $w['now']], [$nextWeek, 'Наступний тиждень · ' . $w['next']]] as $wi => [$wt, $wl]): ?>
+      <details class="wk"<?= $wi === 0 ? ' open' : '' ?>><summary><?= h($wl) ?></summary>
+        <?php for ($d = 1; $d <= 6; $d++): $dp = schedule_for($norm, $d, $wt); if (!$dp) continue; ?>
+          <h3><?= h($dayNames[$d]) ?></h3>
+          <?php $renderPairs($dp); ?>
+        <?php endfor; ?>
+      </details>
     <?php endforeach; ?>
   </section>
   <?php endif; ?>
