@@ -185,6 +185,7 @@ function schedule_normalize(array $items, array $subjects): array
         [$key, $rest] = schedule_split($text, $subjects);
         $rest = trim(preg_replace('/\(\s*по\s+(чисельнику|знаменнику)\s*\)/ui', '', $rest));
         $out[] = ['day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
+                  'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
                   'name' => $key !== null ? $subjects[$key]['name'] : $text, 'room' => $key !== null ? $rest : ''];
     }
     usort($out, fn($a, $b) => [$a['day'], $a['pair']] <=> [$b['day'], $b['pair']]);

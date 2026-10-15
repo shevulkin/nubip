@@ -227,6 +227,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
         foreach ($pairs as $p) {
             echo '<div class="card"><b>', (int)$p['pair'], ' пара · ', h($content['times'][$p['pair']] ?? ''), '</b>', h($p['name']);
             if ($p['room'] !== '') echo '<small>', h($p['room']), '</small>';
+            if (!empty($p['join'])) echo '<a class="pl join" href="', h($p['join']), '" target="_blank" rel="noopener noreferrer">🎥 Приєднатися на пару</a>';
             echo '</div>';
         }
     };
@@ -278,6 +279,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
         <div class="card">
           <b><?= h($s['name']) ?></b>
           <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
+          <?php if (!empty($s['join'])): ?><a class="pl join" href="<?= h($s['join']) ?>" target="_blank" rel="noopener noreferrer">🎥 Приєднатися на пару</a><?php endif; ?>
           <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
             <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>
           <?php endforeach; ?>
