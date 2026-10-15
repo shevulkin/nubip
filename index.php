@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+// Помилки — у файл storage/php-error.log (закритий від веба), а не відвідувачу
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/storage/php-error.log');
+
 $config  = require __DIR__ . '/config.php';
 if (!is_file(__DIR__ . '/data/members.php')) {
     http_response_code(503);
@@ -162,7 +167,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <?php else: ?>
       <div class="lbl">Поточний тиждень · <?= (int)$w['num'] ?>-й · <?= h($w['range']) ?></div>
       <div class="big"><?= h($w['now']) ?></div>
-      <div class="sub">Наступний тиждень (<?= h($w['next_range']) ?>) — <?= h(mb_strtolower($w['next'])) ?></div>
+      <div class="sub">Наступний тиждень (<?= h($w['next_range']) ?>) — <?= h($w['den'] ? 'чисельник' : 'знаменник') ?></div>
     <?php endif; ?>
   </section>
 
