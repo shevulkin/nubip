@@ -38,4 +38,4 @@ h2{font-size:1.05rem;margin:22px 0 10px}
 .pl{display:inline-block;margin:8px 8px 0 0;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:inherit;text-decoration:none;font-size:.9rem}
 .pl:hover{border-color:var(--gold)}
 .who{font-size:.85rem;color:var(--muted);text-align:right}.who::before{content:"👤 "}
-@media (max-width:560px){.who{display:none}}
+@media (max-width:560px){.who{font-size:.75rem;max-width:34vw}.top .muted{display:none}}
