@@ -2,6 +2,10 @@
 declare(strict_types=1);
 
 $config  = require __DIR__ . '/config.php';
+if (!is_file(__DIR__ . '/data/members.php')) {
+    http_response_code(503);
+    exit('Не налаштовано: немає файлу data/members.php (його кладуть на сервер вручну, див. README).');
+}
 $members = require __DIR__ . '/data/members.php';
 $content = (is_file(__DIR__ . '/data/content.php') ? require __DIR__ . '/data/content.php' : [])
     + ['times' => [], 'links' => [], 'chats' => [], 'subjects' => [], 'schedule' => []];
