@@ -102,3 +102,9 @@ section h3.now .cp{background:rgba(255,255,255,.55)}
 .week.num,.week.den{background:var(--wk-bg);color:#24331c}
 .week.den{color:#1d2c3d}
 @media (prefers-color-scheme:dark){.week.num{color:#e3efd9}.week.den{color:#dde8f5}}
+
+/* Тиждень: тиха нейтральна плашка, без яскравого фону */
+.week,.week.num,.week.den{background:var(--card);color:var(--fg);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 12px}
+.week .lbl{font-size:.78rem;color:var(--muted);opacity:1}
+.week .big{font-size:1rem;font-weight:700;color:var(--fg)}
+.week .sub{font-size:.8rem;color:var(--muted);opacity:1}
