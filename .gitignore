@@ -1,0 +1,16 @@
+/storage/*
+!/storage/.htaccess
+!/storage/sessions/
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+!/storage/cache/
+/storage/cache/*
+!/storage/cache/.gitkeep
+/config.local.php
+.vs/
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
+.DS_Store
+/data/members.php

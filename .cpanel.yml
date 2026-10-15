@@ -1,0 +1,12 @@
+---
+# Розгортання: cPanel → Git Version Control → «Deploy HEAD Commit».
+# Так само, як на medoizhka. Змініть DEPLOYPATH, якщо піддомен дивиться в іншу теку.
+deployment:
+  tasks:
+    - export DEPLOYPATH=$HOME/public_html/nubip
+    - /bin/mkdir -p $DEPLOYPATH
+    # rsync, а не cp -R *: зірочка не бачить .htaccess. --delete немає — на сервері лежать сесії.
+    - /usr/bin/rsync -a --exclude=.git --exclude=.gitignore --exclude=.cpanel.yml --exclude=README.md --exclude=config.local.php --exclude=storage/sessions --exclude=storage/cache ./ $DEPLOYPATH/
+    - /bin/chmod 755 $DEPLOYPATH
+    - /bin/mkdir -p $DEPLOYPATH/storage/sessions $DEPLOYPATH/storage/cache
+    - /bin/chmod 755 $DEPLOYPATH/storage $DEPLOYPATH/storage/sessions $DEPLOYPATH/storage/cache
