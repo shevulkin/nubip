@@ -201,6 +201,7 @@ function schedule_normalize(array $items, array $subjects): array
                   'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
                   'pass' => $key !== null ? ($subjects[$key]['join_pass'] ?? '') : '',
                   'teacher' => $key !== null ? ($subjects[$key]['teacher'] ?? '') : '',
+                  'tsheet' => $key !== null ? ($subjects[$key]['teacher_sheet'] ?? true) : true,
                   'name' => $key !== null ? $subjects[$key]['name'] : $text, 'room' => $key !== null ? $rest : ''];
     }
     usort($out, fn($a, $b) => [$a['day'], $a['pair']] <=> [$b['day'], $b['pair']]);
@@ -265,7 +266,7 @@ function joins_apply(array $norm, array $joins): array
                 if ($code !== '' && strpos($p['text'], '(' . $code . ')') === false) continue;
                 $p['join'] = $url;
                 $p['pass'] = $pass;
-                if (empty($p['teacher'])) $p['teacher'] = $teacher;
+                if (empty($p['teacher']) && ($p['tsheet'] ?? true)) $p['teacher'] = $teacher;
                 break 2;
             }
         }
