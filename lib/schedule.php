@@ -9,6 +9,18 @@ declare(strict_types=1);
  * Повертає ['ok'=>bool, 'error'=>string, 'items'=>[[день, пара, тиждень, текст], ...]]
  *   день: 1=Пн…7=Нд;  тиждень: 'both' | 'num' | 'den'
  */
+/** Нижній регістр для кирилиці без залежності від mbstring (довжина в байтах не змінюється). */
+function ulower(string $s): string
+{
+    static $map = null;
+    $map ??= array_combine(
+        array_merge(mb_str_split_safe('АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ'), range('A', 'Z')),
+        array_merge(mb_str_split_safe('абвгґдеєжзиіїйклмнопрстуфхцчшщьюя'), range('a', 'z'))
+    );
+    return strtr($s, $map);
+}
+function mb_str_split_safe(string $s): array { return preg_split('//u', $s, -1, PREG_SPLIT_NO_EMPTY); }
+
 function schedule_load(array $src, string $cacheDir): array
 {
     $file = $cacheDir . '/schedule.xlsx';
@@ -107,11 +119,11 @@ function schedule_parse(string $xlsx, array $src): array
     };
 
     // Колонка групи — за назвою в шапці
-    $needle = mb_strtolower((string)($src['group'] ?? ''));
+    $needle = ulower((string)($src['group'] ?? ''));
     $gc = 0;
     foreach ($cells as $r => $line) {
         if ($r > 12) break;
-        foreach ($line as $c => $t) if ($needle !== '' && mb_strpos(mb_strtolower($t), $needle) !== false) { $gc = $c; break 2; }
+        foreach ($line as $c => $t) if ($needle !== '' && strpos(ulower($t), $needle) !== false) { $gc = $c; break 2; }
     }
     if (!$gc) throw new RuntimeException('Колонку групи «' . ($src['group'] ?? '') . '» у таблиці не знайдено');
 
@@ -123,7 +135,7 @@ function schedule_parse(string $xlsx, array $src): array
     $items = [];
     $day = 0;
     for ($r = 1; $r <= $maxRow; $r++) {
-        $d = mb_strtolower($valueAt(1, $r));
+        $d = ulower($valueAt(1, $r));
         if (isset($days[$d])) $day = $days[$d];
         if (!$day) continue;
         // Початок блоку пари: у колонці B є номер, і комірка B починається саме з цього рядка
@@ -159,9 +171,9 @@ function schedule_split(string $text, array $subjects): array
     $best = null;
     foreach ($subjects as $key => $s) {
         $name = (string)($s['name'] ?? '');
-        if ($name !== '' && mb_stripos($text, $name) === 0 && ($best === null || mb_strlen($name) > mb_strlen($subjects[$best]['name']))) $best = $key;
+        if ($name !== '' && strncmp(ulower($text), ulower($name), strlen($name)) === 0 && ($best === null || strlen($name) > strlen($subjects[$best]['name']))) $best = $key;
     }
-    if ($best !== null) return [$best, trim(mb_substr($text, mb_strlen($subjects[$best]['name'])))];
+    if ($best !== null) return [$best, trim(substr($text, strlen($subjects[$best]['name'])))];
     return [null, $text];
 }
 

@@ -40,3 +40,4 @@ h2{font-size:1.05rem;margin:22px 0 10px}
 .who{font-size:.85rem;color:var(--muted);text-align:right}.who::before{content:"👤 "}
 @media (max-width:560px){.who{font-size:.75rem;max-width:34vw}.top .muted{display:none}}
 .wk{margin-top:10px}.wk summary{cursor:pointer;font-weight:600;padding:6px 0}.wk h3{font-size:.95rem;margin:12px 0 6px;color:var(--muted)}
+.wknav{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}.wknav a,.wk a{color:var(--link)}.wk h3.now,h3.now{color:var(--fg);border-left:3px solid var(--gold);padding-left:8px}section h3{font-size:.95rem;margin:14px 0 6px;color:var(--muted)}
