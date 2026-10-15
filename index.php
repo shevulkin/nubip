@@ -306,8 +306,8 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <section>
       <h2>Предмети</h2>
       <?php foreach ($content['subjects'] as $key => $s): ?>
-        <div class="card">
-          <b><?= h($s['name']) ?></b>
+        <div class="card<?= !empty($s['done']) ? ' done' : '' ?>">
+          <b><?= h($s['name']) ?><?= !empty($s['done']) ? ' <span class="badge">відчитано</span>' : '' ?></b>
           <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
           <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
             <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>

@@ -165,16 +165,29 @@ function schedule_parse(string $xlsx, array $src): array
     return $items;
 }
 
-/** Розбиває «Назва предмета 121 к.1» на предмет (за списком відомих) і решту (аудиторія). */
+/**
+ * Розбиває «Назва предмета 121 к.1» на предмет і решту (аудиторія). Назва в таблиці — 'sheet'
+ * (інакше 'name'). Якщо кілька предметів ділять одну назву в таблиці (ППТП: ВРХ / Пасіка / Дрібне),
+ * їх розрізняє 'code' — фрагмент тексту пари, наприклад «(07.06)».
+ * Повертає [ключ|null, решта, назва в таблиці].
+ */
 function schedule_split(string $text, array $subjects): array
 {
-    $best = null;
+    $best = null; $bestLen = -1;
     foreach ($subjects as $key => $s) {
-        $name = (string)($s['name'] ?? '');
-        if ($name !== '' && strncmp(ulower($text), ulower($name), strlen($name)) === 0 && ($best === null || strlen($name) > strlen($subjects[$best]['name']))) $best = $key;
+        $sheet = (string)($s['sheet'] ?? $s['name'] ?? '');
+        if ($sheet === '' || strncmp(ulower($text), ulower($sheet), strlen($sheet)) !== 0) continue;
+        $code = (string)($s['code'] ?? '');
+        if ($code !== '' && strpos($text, $code) === false) continue;
+        $len = strlen($sheet) + ($code !== '' ? 1000 : 0); // предмет із кодом точніший
+        if ($len > $bestLen && empty($s['done'])) { $best = $key; $bestLen = $len; }
     }
-    if ($best !== null) return [$best, trim(substr($text, strlen($subjects[$best]['name'])))];
-    return [null, $text];
+    if ($best === null) return [null, $text, ''];
+    $s = $subjects[$best];
+    $sheet = (string)($s['sheet'] ?? $s['name']);
+    $rest = trim(substr($text, strlen($sheet)));
+    if (!empty($s['code'])) $rest = trim(str_replace($s['code'], '', $rest));
+    return [$best, $rest, $sheet];
 }
 
 /** Додає до кожної пари назву предмета й аудиторію; прибирає зайвий припис «(по чисельнику)». */
@@ -182,9 +195,9 @@ function schedule_normalize(array $items, array $subjects): array
 {
     $out = [];
     foreach ($items as [$day, $pair, $week, $text]) {
-        [$key, $rest] = schedule_split($text, $subjects);
+        [$key, $rest, $sheet] = schedule_split($text, $subjects);
         $rest = trim(preg_replace('/\(\s*по\s+(чисельнику|знаменнику)\s*\)/ui', '', $rest));
-        $out[] = ['text' => $text, 'day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
+        $out[] = ['text' => $text, 'sheet' => $sheet, 'day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
                   'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
                   'pass' => $key !== null ? ($subjects[$key]['join_pass'] ?? '') : '',
                   'teacher' => $key !== null ? ($subjects[$key]['teacher'] ?? '') : '',
@@ -248,7 +261,7 @@ function joins_apply(array $norm, array $joins): array
         $order = $p['day'] === 2 ? ['lecture', 'practice'] : ['practice', 'lecture'];
         foreach ($order as $sec) {
             foreach ($joins[$sec] as [$name, $code, $url, $pass, $teacher]) {
-                if ($name === '' || strncmp(ulower($p['name']), ulower($name), strlen($name)) !== 0) continue;
+                if ($name === '' || strncmp(ulower($p['sheet'] !== '' ? $p['sheet'] : $p['name']), ulower($name), strlen($name)) !== 0) continue;
                 if ($code !== '' && strpos($p['text'], '(' . $code . ')') === false) continue;
                 $p['join'] = $url;
                 $p['pass'] = $pass;
