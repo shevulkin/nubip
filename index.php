@@ -53,9 +53,7 @@ if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function short_url(string $u): string {
-    $s = preg_replace('~^https?://~', '', $u);
-    $s = preg_replace('~[?#].*$~', '', $s);
-    return strlen($s) > 58 ? substr($s, 0, 57) . '…' : $s;
+    return preg_replace('~^https?://~', '', $u);
 }
 function key9(string $phone): string {
     $d = preg_replace('/\D+/', '', $phone);
