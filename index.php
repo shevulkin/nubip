@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 $config  = require __DIR__ . '/config.php';
 $members = require __DIR__ . '/data/members.php';
+$content = (is_file(__DIR__ . '/data/content.php') ? require __DIR__ . '/data/content.php' : [])
+    + ['times' => [], 'links' => [], 'chats' => [], 'subjects' => [], 'schedule' => []];
 date_default_timezone_set($config['timezone']);
 
 // ── Закрито від пошуковиків на кожній відповіді ──
@@ -161,24 +163,53 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <?php endif; ?>
   </section>
 
+  <?php
+    $dayNames = [1 => 'Понеділок', 2 => 'Вівторок', 3 => 'Середа', 4 => 'Четвер', 5 => 'Пʼятниця', 6 => 'Субота', 7 => 'Неділя'];
+    $today = (int)date('N');
+    $pairsToday = $content['schedule'][$today] ?? [];
+  ?>
+  <?php if ($content['schedule']): ?>
+  <section>
+    <h2>Пари сьогодні · <?= h($dayNames[$today]) ?></h2>
+    <?php if (!$pairsToday): ?><p class="muted">Сьогодні пар немає.</p><?php endif; ?>
+    <?php foreach ($pairsToday as [$n, $key, $room]): $s = $content['subjects'][$key] ?? ['name' => $key]; ?>
+      <div class="card"><b><?= (int)$n ?> пара · <?= h($content['times'][$n] ?? '') ?></b><?= h($s['name']) ?><small><?= h($room) ?></small></div>
+    <?php endforeach; ?>
+  </section>
+  <?php endif; ?>
+
   <div class="cols">
     <section>
       <h2>Посилання</h2>
-      <?php foreach ($config['links'] as [$t, $u, $d]): ?>
-        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small></a>
+      <?php foreach ($content['links'] as [$t, $u, $d, $showUrl]): ?>
+        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small><?php if ($showUrl): ?><small class="url"><?= h(preg_replace('~^https?://~', '', $u)) ?></small><?php endif; ?></a>
       <?php endforeach; ?>
-      <h2>Чати групи</h2>
-      <?php foreach ($config['chats'] as [$t, $u, $d]): ?>
-        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small></a>
-      <?php endforeach; ?>
-    </section>
-    <section>
+      <?php if ($content['chats']): ?><h2>Чати групи</h2>
+        <?php foreach ($content['chats'] as [$t, $u, $d]): ?>
+          <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small></a>
+        <?php endforeach; ?>
+      <?php endif; ?>
       <h2>Група · <?= count($members) ?> студентів</h2>
       <ol class="list">
         <?php foreach ($members as $i => [$name]): ?>
           <li<?= $name === $me ? ' class="me"' : '' ?>><?= h($name) ?></li>
         <?php endforeach; ?>
       </ol>
+    </section>
+    <section>
+      <h2>Предмети</h2>
+      <?php foreach ($content['subjects'] as $key => $s):
+        $when = [];
+        foreach ($content['schedule'] as $d => $pp) foreach ($pp as [$n, $k]) if ($k === $key) $when[] = ['','Пн','Вт','Ср','Чт','Пт','Сб','Нд'][$d] . ' · ' . $n . ' пара'; ?>
+        <div class="card">
+          <b><?= h($s['name']) ?></b>
+          <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
+          <?php if ($when): ?><small><?= h(implode(', ', $when)) ?></small><?php endif; ?>
+          <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
+            <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>
+          <?php endforeach; ?>
+        </div>
+      <?php endforeach; ?>
     </section>
   </div>
 </main>
