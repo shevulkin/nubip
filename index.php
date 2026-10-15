@@ -216,8 +216,25 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     $pairsToday = schedule_for_safe($norm, $today, $curWeek);
 
     // Один компактний рядок пари: час · назва · аудиторія · підключення (посилання, ID, код)
-    $renderPairs = function (array $pairs) use ($content) {
-        foreach ($pairs as $p) {
+    // Усі 7 пар дня: порожні — одним рядком «1, 2 пари — немає»
+    $renderPairs = function (array $pairs) use ($content, &$renderOne) {
+        $by = [];
+        foreach ($pairs as $p) $by[(int)$p['pair']][] = $p;
+        $gap = [];
+        $flush = function () use (&$gap) {
+            if (!$gap) return;
+            echo '<div class="pair none"><div class="pt"><b>', h(implode(', ', $gap)), '</b></div><div class="pn">', count($gap) > 1 ? 'пари' : 'пара', ' — немає</div></div>';
+            $gap = [];
+        };
+        for ($n = 1; $n <= 7; $n++) {
+            if (empty($by[$n])) { $gap[] = $n; continue; }
+            $flush();
+            foreach ($by[$n] as $p) $renderOne($p);
+        }
+        $flush();
+    };
+    $renderOne = function (array $p) use ($content) {
+        {
             echo '<div class="pair"><div class="pt"><b>', (int)$p['pair'], '</b><span>', h($content['times'][$p['pair']] ?? ''), '</span></div><div class="pn">', h($p['name']);
             if ($p['room'] !== '') echo ' <small>', h($p['room']), '</small>';
             if (!empty($p['teacher'])) echo '<div class="tc">👨‍🏫 ', h($p['teacher']), '</div>';
@@ -247,7 +264,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <?php for ($d = 1; $d <= 6; $d++): $dp = schedule_for_safe($norm, $d, $weekType); $date = $monday->modify('+' . ($d - 1) . ' days'); ?>
       <h3<?= ($off === 0 && $d === $today) ? ' class="now"' : '' ?>><?= h($dayNames[$d]) ?> · <?= h($date->format('d.m')) ?>
         <?php if ($norm): ?><button type="button" class="cp" data-copy="<?= h(schedule_day_text($d, $weekType, $dp, $content['times'])) ?>">📋 Копіювати</button><?php endif; ?></h3>
-      <?php if ($dp) $renderPairs($dp); else echo '<p class="muted">Пар немає</p>'; ?>
+      <?php $renderPairs($dp); ?>
     <?php endfor; ?>
   </section>
 
@@ -281,7 +298,6 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
       <a class="more" href="?p=schedule">Весь розклад →</a>
       <?php if ($norm): ?><button type="button" class="cp" data-copy="<?= h(schedule_day_text($today, $curWeek, $pairsToday, $content['times'])) ?>">📋 Копіювати</button><?php endif; ?></h2>
     <?php if ($schedNote): ?><p class="muted"><?= h($schedNote) ?></p><?php endif; ?>
-    <?php if ($norm && !$pairsToday): ?><p class="muted">Сьогодні пар немає.</p><?php endif; ?>
     <?php $renderPairs($pairsToday); ?>
   </section>
   <?php endif; ?>

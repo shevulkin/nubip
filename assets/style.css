@@ -62,3 +62,4 @@ h2{font-size:1.05rem;margin:22px 0 10px}
 .cp{width:auto;margin-left:8px;padding:3px 10px;font-size:.8rem;font-weight:500;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:999px;vertical-align:middle}
 .cp:hover{border-color:var(--gold)}
 .tc{font-size:.8rem;color:var(--muted);margin-top:2px}
+.pair.none{background:transparent;border-style:dashed;padding:4px 10px}.pair.none .pn{color:var(--muted);font-size:.85rem}.pair.none .pt b{font-size:.85rem;color:var(--muted)}
