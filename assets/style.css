@@ -97,3 +97,8 @@ section h3.now .cp{background:rgba(255,255,255,.55)}
   .week{--wk-bg:#222d1c;--wk-bd:#3c5230;--wk-ac:#a5d18c;color:#e3efd9}
   .week.den{--wk-bg:#1d2733;--wk-bd:#36506b;--wk-ac:#8ab4e8;color:#dde8f5}
 }
+
+/* Старі правила .week.num / .week.den мали вищу специфічність і лишали червоний фон — перекриваємо їх */
+.week.num,.week.den{background:var(--wk-bg);color:#24331c}
+.week.den{color:#1d2c3d}
+@media (prefers-color-scheme:dark){.week.num{color:#e3efd9}.week.den{color:#dde8f5}}
