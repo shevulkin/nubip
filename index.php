@@ -222,12 +222,10 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <section>
       <h2>Предмети</h2>
       <?php foreach ($content['subjects'] as $key => $s):
-        $when = [];
-        foreach ($content['schedule'] as $d => $pp) foreach ($pp as [$n, $k]) if ($k === $key) $when[] = ['','Пн','Вт','Ср','Чт','Пт','Сб','Нд'][$d] . ' · ' . $n . ' пара'; ?>
+        ?>
         <div class="card">
           <b><?= h($s['name']) ?></b>
           <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
-          <?php if ($when): ?><small><?= h(implode(', ', $when)) ?></small><?php endif; ?>
           <?php foreach ($s['playlists'] ?? [] as [$pl, $pu]): ?>
             <a class="pl" href="<?= h($pu) ?>" target="_blank" rel="noopener noreferrer">▶ <?= h($pl) ?></a>
           <?php endforeach; ?>
