@@ -87,4 +87,3 @@ section h3 .cp{background:rgba(255,255,255,.65);border:1px solid #e3cf93}
 section h3.now{background:var(--gold);border-color:var(--gold)}
 section h3.now .cp{background:rgba(255,255,255,.55)}
 @media (prefers-color-scheme:dark){section h3{border-color:#6a5a2c}section h3 .cp{background:rgba(0,0,0,.25);border-color:#6a5a2c}}
-.card.done{opacity:.7}.badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--line);color:var(--muted);font-size:.72rem;font-weight:500;vertical-align:middle}
