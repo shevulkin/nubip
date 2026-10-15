@@ -52,6 +52,11 @@ session_start();
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+function short_url(string $u): string {
+    $s = preg_replace('~^https?://~', '', $u);
+    $s = preg_replace('~[?#].*$~', '', $s);
+    return strlen($s) > 58 ? substr($s, 0, 57) . '…' : $s;
+}
 function key9(string $phone): string {
     $d = preg_replace('/\D+/', '', $phone);
     return strlen($d) >= 9 ? substr($d, -9) : '';
@@ -205,7 +210,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     <section>
       <h2>Посилання</h2>
       <?php foreach ($content['links'] as [$t, $u, $d, $showUrl]): ?>
-        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small><?php if ($showUrl): ?><small class="url"><?= h(preg_replace('~^https?://~', '', $u)) ?></small><?php endif; ?></a>
+        <a class="card" href="<?= h($u) ?>" target="_blank" rel="noopener noreferrer"><b><?= h($t) ?></b><small><?= h($d) ?></small><small class="url"><?= h(short_url($u)) ?></small></a>
       <?php endforeach; ?>
       <?php if ($content['chats']): ?><h2>Чати групи</h2>
         <?php foreach ($content['chats'] as [$t, $u, $d]): ?>
