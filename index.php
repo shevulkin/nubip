@@ -6,13 +6,28 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/storage/php-error.log');
 
-$config  = require __DIR__ . '/config.php';
-if (!is_file(__DIR__ . '/data/members.php')) {
-    http_response_code(503);
-    exit('Не налаштовано: немає файлу data/members.php (його кладуть на сервер вручну, див. README).');
+// Підключення файлів з даними. Помилка синтаксису в них (зазвичай зіпсовані лапки) — зрозуміле
+// повідомлення й запис у лог, а не порожня 500.
+function load_data(string $file, bool $required = true): array {
+    $path = __DIR__ . '/' . $file;
+    if (!is_file($path)) {
+        if (!$required) return [];
+        http_response_code(503);
+        exit('Не налаштовано: немає файлу ' . $file . ' (його кладуть на сервер вручну, див. README).');
+    }
+    try {
+        $r = require $path;
+    } catch (Throwable $e) {
+        error_log($file . ': ' . $e->getMessage() . ' (рядок ' . $e->getLine() . ')');
+        http_response_code(503);
+        exit('Помилка у файлі ' . $file . ', рядок ' . $e->getLine() . ': ' . $e->getMessage());
+    }
+    return is_array($r) ? $r : [];
 }
-$members = require __DIR__ . '/data/members.php';
-$content = (is_file(__DIR__ . '/data/content.php') ? require __DIR__ . '/data/content.php' : [])
+
+$config  = load_data('config.php');
+$members = load_data('data/members.php');
+$content = load_data('data/content.php', false)
     + ['times' => [], 'links' => [], 'chats' => [], 'subjects' => [], 'schedule' => []];
 date_default_timezone_set($config['timezone']);
 
