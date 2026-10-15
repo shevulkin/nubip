@@ -58,6 +58,18 @@ function short_url(string $u): string {
 function schedule_for_safe(array $norm, int $day, string $weekType): array {
     return array_values(array_filter($norm, fn($p) => $p['day'] === $day && ($p['week'] === 'both' || $p['week'] === $weekType)));
 }
+/** Ключ сортування за українським алфавітом (без залежності від intl). */
+function ukr_key(string $s): string {
+    static $pos = null;
+    if ($pos === null) {
+        $pos = [];
+        foreach (preg_split('//u', ' 0123456789abcdefghijklmnopqrstuvwxyzабвгґдеєжзиіїйклмнопрстуфхцчшщьюя', -1, PREG_SPLIT_NO_EMPTY) as $i => $c) $pos[$c] = $i + 1;
+    }
+    require_once __DIR__ . '/lib/schedule.php';
+    $out = '';
+    foreach (preg_split('//u', ulower($s), -1, PREG_SPLIT_NO_EMPTY) as $c) $out .= sprintf('%03d', $pos[$c] ?? 200);
+    return $out;
+}
 function key9(string $phone): string {
     $d = preg_replace('/\D+/', '', $phone);
     return strlen($d) >= 9 ? substr($d, -9) : '';
@@ -305,7 +317,12 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
   <div class="cols">
     <section>
       <h2>Предмети</h2>
-      <?php foreach ($content['subjects'] as $key => $s): ?>
+      <?php
+        $subjectsSorted = $content['subjects'];
+        uasort($subjectsSorted, fn($a, $b) => strcmp(ukr_key($a['name']), ukr_key($b['name'])));
+        foreach ($subjectsSorted as $key => $s):
+          if (!empty($s['playlists'])) usort($s['playlists'], fn($a, $b) => strcmp(ukr_key($a[0]), ukr_key($b[0])));
+      ?>
         <div class="card">
           <b><?= h($s['name']) ?></b>
           <?php if (!empty($s['teacher'])): ?><small><?= h($s['teacher']) ?></small><?php endif; ?>
