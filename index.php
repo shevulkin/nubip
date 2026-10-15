@@ -147,11 +147,10 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
 <header class="top">
   <img class="logo sm" src="assets/logo.jpg" alt="">
   <div class="grow"><strong>Магістри 26004М</strong><span class="muted"> · Бджільництво та апітехнології</span></div>
+  <div class="who" title="Ви увійшли як"><?= h($me) ?></div>
   <form method="post" action="?a=logout"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><button class="ghost" type="submit">Вийти</button></form>
 </header>
 <main class="wrap">
-  <p class="hello">Вітаю, <?= h($greet) ?>!</p>
-
   <section class="week <?= $w['den'] ? 'den' : 'num' ?>">
     <?php if ($w['before_start']): ?>
       <div class="big">Семестр ще не розпочався</div>
