@@ -184,7 +184,7 @@ function schedule_normalize(array $items, array $subjects): array
     foreach ($items as [$day, $pair, $week, $text]) {
         [$key, $rest] = schedule_split($text, $subjects);
         $rest = trim(preg_replace('/\(\s*по\s+(чисельнику|знаменнику)\s*\)/ui', '', $rest));
-        $out[] = ['day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
+        $out[] = ['text' => $text, 'day' => $day, 'pair' => $pair, 'week' => $week, 'key' => $key,
                   'join' => $key !== null ? ($subjects[$key]['join'] ?? '') : '',
                   'name' => $key !== null ? $subjects[$key]['name'] : $text, 'room' => $key !== null ? $rest : ''];
     }
@@ -196,4 +196,60 @@ function schedule_normalize(array $items, array $subjects): array
 function schedule_for(array $norm, int $day, string $weekType): array
 {
     return array_values(array_filter($norm, fn($p) => $p['day'] === $day && ($p['week'] === 'both' || $p['week'] === $weekType)));
+}
+
+/**
+ * Посилання на підключення з таблиці «Посилання на онлайн заняття». У ній два блоки для магістрів:
+ * «посилання на лекції» (вівторок) і «посилання на практичні заняття». Рядок: назва предмета
+ * (інколи з кодом на кшталт (07.03)), викладач, посилання.
+ * Повертає ['lecture' => [[назва, код, url], …], 'practice' => [...]].
+ */
+function joins_load(array $src, string $cacheDir): array
+{
+    $file = $cacheDir . '/joins.csv';
+    $ttl = (int)($src['ttl'] ?? 1800);
+    if (!is_file($file) || filemtime($file) < time() - $ttl) {
+        $ctx = stream_context_create(['http' => ['timeout' => 8, 'follow_location' => 1, 'user_agent' => 'nubip-schedule']]);
+        $d = @file_get_contents($src['url'] ?? '', false, $ctx);
+        if (is_string($d) && $d !== '' && $d[0] !== '<') @file_put_contents($file, $d, LOCK_EX);
+    }
+    $out = ['lecture' => [], 'practice' => []];
+    if (!is_file($file)) return $out;
+    $h = fopen($file, 'rb');
+    $section = null;
+    $started = !isset($src['after']);
+    while (($row = fgetcsv($h, 0, ',', '"', '')) !== false) {
+        $line = ulower(implode(' ', $row));
+        if (!$started) { if (strpos($line, ulower($src['after'])) !== false) $started = true; continue; }
+        if (strpos($line, 'посилання на лекції') !== false) { $section = 'lecture'; continue; }
+        if (strpos($line, 'посилання на практичні') !== false) { $section = 'practice'; continue; }
+        if ($section === null) continue;
+        $a = trim(preg_replace('/\s+/u', ' ', (string)($row[0] ?? '')));
+        if ($a === '') continue;
+        if (!preg_match('~https?://[^\s,;]+~u', implode(' ', array_slice($row, 1)), $m)) continue;
+        $code = preg_match('/\((\d\d\.\d\d)\)/', $a, $c) ? $c[1] : '';
+        $name = trim(preg_replace('/\(\d\d\.\d\d\)|\//u', '', $a));
+        $name = trim(preg_replace('/\s+/u', ' ', $name));
+        $out[$section][] = [$name, $code, $m[0]];
+    }
+    fclose($h);
+    return $out;
+}
+
+/** Підставляє посилання в пари, де його ще немає. Вівторок — лекції, інші дні — практичні. */
+function joins_apply(array $norm, array $joins): array
+{
+    foreach ($norm as &$p) {
+        if (!empty($p['join'])) continue;
+        $order = $p['day'] === 2 ? ['lecture', 'practice'] : ['practice', 'lecture'];
+        foreach ($order as $sec) {
+            foreach ($joins[$sec] as [$name, $code, $url]) {
+                if ($name === '' || strncmp(ulower($p['name']), ulower($name), strlen($name)) !== 0) continue;
+                if ($code !== '' && strpos($p['text'], '(' . $code . ')') === false) continue;
+                $p['join'] = $url;
+                break 2;
+            }
+        }
+    }
+    return $norm;
 }

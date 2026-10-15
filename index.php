@@ -218,6 +218,10 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
         $norm = []; $schedNote = 'Розклад тимчасово недоступний.';
     }
 
+    try { // посилання на підключення з таблиці; явне 'join' у предметі має пріоритет
+        if ($norm && !empty($content['joins_source'])) $norm = joins_apply($norm, joins_load($content['joins_source'], __DIR__ . '/storage/cache'));
+    } catch (Throwable $e) { error_log('joins: ' . $e->getMessage()); }
+
     // Тиждень, який дивимось: 0 — поточний, -1 — минулий, +1 — наступний…
     $off = max(-20, min(20, (int)($_GET['w'] ?? 0)));
     $weekType = (($off % 2 === 0) === (bool)!$w['den']) ? 'num' : 'den'; // парні зсуви — як поточний
