@@ -70,13 +70,9 @@ function ukr_key(string $s): string {
     foreach (preg_split('//u', ulower($s), -1, PREG_SPLIT_NO_EMPTY) as $c) $out .= sprintf('%03d', $pos[$c] ?? 200);
     return $out;
 }
-/** Код групи без різниці регістру й схожих літер: кирилична «М» = латинська «M» і т.д. */
+/** Код групи: без різниці регістру й пробілів, але ЛИШЕ латиницею (кирилична «М» не збігається з «M»). */
 function norm_code(string $s): string {
     $s = preg_replace('/\s+/u', '', $s) ?? ''; // некоректний UTF-8 → порожньо, а не помилка
-    $s = strtr($s, [
-        'А' => 'A', 'В' => 'B', 'С' => 'C', 'Е' => 'E', 'Н' => 'H', 'І' => 'I', 'К' => 'K', 'М' => 'M', 'О' => 'O', 'Р' => 'P', 'Т' => 'T', 'Х' => 'X',
-        'а' => 'a', 'в' => 'b', 'с' => 'c', 'е' => 'e', 'н' => 'h', 'і' => 'i', 'к' => 'k', 'м' => 'm', 'о' => 'o', 'р' => 'p', 'т' => 't', 'х' => 'x',
-    ]);
     return strtoupper($s);
 }
 function key9(string $phone): string {
@@ -186,6 +182,7 @@ $mtime = fn(string $f) => (string)@filemtime(__DIR__ . '/assets/' . $f);
     </label>
     <label>Код групи
       <input name="code" type="text" autocapitalize="characters" placeholder="Код з чату групи" required>
+      <small class="hint">Код вводьте латиницею (англійська розкладка), літери — як у повідомленні.</small>
     </label>
     <button type="submit">Увійти</button>
   </form>

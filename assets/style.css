@@ -112,3 +112,5 @@ section h3.now .cp{background:rgba(255,255,255,.55)}
 /* Кнопка «Приєднатися»: спокійна, без яскравої жовтої заливки */
 .pl.join{background:color-mix(in srgb,var(--gold) 14%,var(--card));border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));color:var(--fg);font-weight:500}
 .pl.join:hover{background:color-mix(in srgb,var(--gold) 26%,var(--card));border-color:var(--gold)}
+
+.hint{display:block;margin-top:4px;font-size:.8rem;color:var(--muted)}
